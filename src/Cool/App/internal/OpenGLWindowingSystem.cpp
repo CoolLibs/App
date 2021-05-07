@@ -49,6 +49,7 @@ OpenGLWindow OpenGLWindowingSystem::createWindow(const char* name, int width, in
 	// Window flags
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, m_openGLMajorVersion);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, m_openGLMinorVersion);
+	glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
 #ifndef NDEBUG
 	if (m_openGLVersion >= 430)
 		glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, true);

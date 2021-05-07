@@ -34,6 +34,12 @@ private:
 	void update();
 	void onWindowMove(int x, int y);
 	void onWindowResize(int w, int h);
+	void onMouseMove(double xpos, double ypos);
+	void onMouseClick(int button, int action, int mods);
+	double prevx = 0;
+	double prevy = 0;
+	bool is_holding_window = false;
+	bool is_maximized = false;
 
 	void ImGuiDockspace();
 	void updateAvailableRenderingSpaceSizeAndPos(ImGuiDockNode* node);

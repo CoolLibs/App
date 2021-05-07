@@ -14,6 +14,9 @@
 #pragma comment(linker, "/SUBSYSTEM:windows /ENTRY:mainCRTStartup")
 #endif
 
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h>
+
 namespace Cool {
 
 AppManager::AppManager(OpenGLWindow& mainWindow, IApp& app)
@@ -43,6 +46,24 @@ void AppManager::run() {
 }
 
 void AppManager::update() {
+
+	//xpos += winx;
+	//ypos += winy;
+	//
+	//double deltax = xpos - prevx;
+	//double deltay = ypos - prevy;
+	//
+	//Log::Info("{} {}", deltax, deltay);
+	//
+	//prevx = xpos;
+	//prevy = ypos;
+
+	if (is_holding_window) {
+		int winx, winy;
+		glfwGetWindowPos(m_mainWindow.get(), &winx, &winy);
+		glfwSetWindowPos(m_mainWindow.get(), winx + ImGui::GetIO().MouseDelta.x, winy + ImGui::GetIO().MouseDelta.y);
+	}
+	
 	// Clear screen
 	const glm::vec3& emptySpaceColor = RenderState::getEmptySpaceColor();
 	glClearColor(emptySpaceColor.r, emptySpaceColor.g, emptySpaceColor.b, 1.0f);
@@ -65,6 +86,28 @@ void AppManager::update() {
 				ImGui::EndMenu();
 			}
 			m_app.ImGuiMenus();
+			if (ImGui::Button("Minimize")) {
+				glfwIconifyWindow(m_mainWindow.get());
+			}
+			ImGui::NewLine();
+			if (ImGui::Button("Maximize")) {
+				if (is_maximized) {
+					glfwRestoreWindow(m_mainWindow.get());
+				}
+				else {
+					glfwMaximizeWindow(m_mainWindow.get());
+				}
+				is_maximized = !is_maximized;
+			}
+			if (ImGui::Button("Close")) {
+				glfwSetWindowShouldClose(m_mainWindow.get(), true);
+			}
+			if (ImGui::Button("sdfsdf")) {
+				//is_holding_window = true;
+			}
+			if (!ImGui::IsItemHovered()) {
+				//is_holding_window = false;
+			}
 			ImGui::EndMainMenuBar();
 		}
 		// Windows
@@ -106,6 +149,7 @@ void AppManager::key_callback(GLFWwindow* window, int key, int scancode, int act
 void AppManager::mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
 	ImGui_ImplGlfw_MouseButtonCallback(window, button, action, mods);
 	AppManager* appManager = reinterpret_cast<AppManager*>(glfwGetWindowUserPointer(window));
+	appManager->onMouseClick(button, action, mods);
 	appManager->m_app.onMouseButtonEvent(button, action, mods);
 }
 
@@ -117,19 +161,20 @@ void AppManager::scroll_callback(GLFWwindow* window, double xoffset, double yoff
 
 void AppManager::cursor_position_callback(GLFWwindow* window, double xpos, double ypos) {
 	AppManager* appManager = reinterpret_cast<AppManager*>(glfwGetWindowUserPointer(window));
+	appManager->onMouseMove(xpos, ypos);
 	appManager->m_app.onMouseMoveEvent(xpos, ypos);
 }
 
 void AppManager::window_size_callback(GLFWwindow* window, int w, int h) {
 	AppManager* appManager = reinterpret_cast<AppManager*>(glfwGetWindowUserPointer(window));
 	appManager->onWindowResize(w, h);
-	appManager->update();
+	//appManager->update();
 }
 
 void AppManager::window_pos_callback(GLFWwindow* window, int x, int y) {
 	AppManager* appManager = reinterpret_cast<AppManager*>(glfwGetWindowUserPointer(window));
 	appManager->onWindowMove(x, y);
-	appManager->update();
+	//appManager->update();
 }
 
 void AppManager::onWindowMove(int x, int y) {
@@ -138,6 +183,31 @@ void AppManager::onWindowMove(int x, int y) {
 
 void AppManager::onWindowResize(int w, int h) {
 	RenderState::setWindowSize(w, h);
+}
+
+void AppManager::onMouseMove(double xpos, double ypos) {
+}
+
+void AppManager::onMouseClick(int button, int action, int mods) {
+	if (!ImGui::GetIO().WantCaptureMouse) {
+		if (action == GLFW_PRESS) {
+			//is_holding_window = true;
+
+			glfwDragWindow(m_mainWindow.get());
+
+			//HWND hwnd = glfwGetWin32Window(m_mainWindow.get());
+			//LONG style = GetWindowLongA(hwnd, GWL_STYLE);
+			//style = style | WS_SIZEBOX;
+			//SetWindowLongA(hwnd, GWL_STYLE, style);
+		}
+		else {
+			is_holding_window = false;
+			//HWND hwnd = glfwGetWin32Window(m_mainWindow.get());
+			//LONG style = GetWindowLongA(hwnd, GWL_STYLE);
+			//style = style & ~WS_SIZEBOX;
+			//SetWindowLongA(hwnd, GWL_STYLE, style);
+		}
+	}
 }
 
 void AppManager::updateAvailableRenderingSpaceSizeAndPos(ImGuiDockNode* node) {
