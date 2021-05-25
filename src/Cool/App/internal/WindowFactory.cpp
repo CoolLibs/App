@@ -49,6 +49,11 @@ static void SetupVulkanWindow(VulkanWindowState& vulkan_window_state, VkSurfaceK
     wd->PresentMode = ImGui_ImplVulkanH_SelectPresentMode(Vulkan::Context::g_PhysicalDevice, wd->Surface, &present_modes[0], IM_ARRAYSIZE(present_modes));
     //printf("[vulkan] Selected PresentMode = %d\n", wd->PresentMode);
 
+	// Store surface format and present mode globally
+	Vulkan::Context::g_SurfaceFormat = wd->SurfaceFormat;
+	Vulkan::Context::g_PresentMode = wd->PresentMode;
+	//
+
     // Create SwapChain, RenderPass, Framebuffer, etc.
     IM_ASSERT(vulkan_window_state.g_MinImageCount >= 2);
     ImGui_ImplVulkanH_CreateOrResizeWindow(Vulkan::Context::g_Instance, Vulkan::Context::g_PhysicalDevice, Vulkan::Context::g_Device, wd, Vulkan::Context::g_QueueFamily, Vulkan::Context::g_Allocator, width, height, vulkan_window_state.g_MinImageCount);

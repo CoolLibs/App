@@ -13,6 +13,8 @@ VkQueue                  Context::g_Queue = VK_NULL_HANDLE;
 VkDebugReportCallbackEXT Context::g_DebugReport = VK_NULL_HANDLE;
 VkPipelineCache          Context::g_PipelineCache = VK_NULL_HANDLE;
 VkDescriptorPool         Context::g_DescriptorPool = VK_NULL_HANDLE;
+VkSurfaceFormatKHR       Context::g_SurfaceFormat;
+VkPresentModeKHR         Context::g_PresentMode;
 
 #ifndef NDEBUG
 static VKAPI_ATTR VkBool32 VKAPI_CALL debug_report(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData)
