@@ -3,7 +3,7 @@
 #include "../IApp.h"
 #include "../RenderState.h"
 #include "../Input.h"
-#include <Cool/Gpu/Renderer.h>
+#include "../Gpu/Renderer.h"
 
 #include <imgui/backends/imgui_impl_glfw.h>
 #ifdef __COOL_APP_VULKAN
