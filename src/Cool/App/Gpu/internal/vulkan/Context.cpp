@@ -1,25 +1,29 @@
 #ifdef __COOL_APP_VULKAN
+#include "Context.h"
+#include "CheckResult.h"
 
-#include "VulkanContext.h"
-#include "VulkanCheckResult.h"
+namespace Cool::Vulkan {
 
-namespace Cool {
+VkAllocationCallbacks*   Context::g_Allocator = NULL;
+VkInstance               Context::g_Instance = VK_NULL_HANDLE;
+VkPhysicalDevice         Context::g_PhysicalDevice = VK_NULL_HANDLE;
+VkDevice                 Context::g_Device = VK_NULL_HANDLE;
+uint32_t                 Context::g_QueueFamily = (uint32_t)-1;
+VkQueue                  Context::g_Queue = VK_NULL_HANDLE;
+VkDebugReportCallbackEXT Context::g_DebugReport = VK_NULL_HANDLE;
+VkPipelineCache          Context::g_PipelineCache = VK_NULL_HANDLE;
+VkDescriptorPool         Context::g_DescriptorPool = VK_NULL_HANDLE;
 
-//#define IMGUI_UNLIMITED_FRAME_RATE
 #ifndef NDEBUG
-#define IMGUI_VULKAN_DEBUG_REPORT
+static VKAPI_ATTR VkBool32 VKAPI_CALL debug_report(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData)
+{
+    (void)flags; (void)object; (void)location; (void)messageCode; (void)pUserData; (void)pLayerPrefix; // Unused arguments
+    fprintf(stderr, "[vulkan] Debug report from ObjectType: %i\nMessage: %s\n\n", objectType, pMessage);
+    return VK_FALSE;
+}
 #endif
 
-#ifdef IMGUI_VULKAN_DEBUG_REPORT
-    static VKAPI_ATTR VkBool32 VKAPI_CALL debug_report(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData)
-    {
-        (void)flags; (void)object; (void)location; (void)messageCode; (void)pUserData; (void)pLayerPrefix; // Unused arguments
-        fprintf(stderr, "[vulkan] Debug report from ObjectType: %i\nMessage: %s\n\n", objectType, pMessage);
-        return VK_FALSE;
-    }
-#endif // IMGUI_VULKAN_DEBUG_REPORT
-
-VulkanContext::VulkanContext(const char** extensions, uint32_t extensions_count) {
+void Context::Initialize(const char** extensions, uint32_t extensions_count) {
     VkResult err;
     // Create Vulkan Instance
     {
@@ -27,7 +31,7 @@ VulkanContext::VulkanContext(const char** extensions, uint32_t extensions_count)
         create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
         create_info.enabledExtensionCount = extensions_count;
         create_info.ppEnabledExtensionNames = extensions;
-#ifdef IMGUI_VULKAN_DEBUG_REPORT
+#ifndef NDEBUG
         // Enabling validation layers
         const char* layers[] = { "VK_LAYER_KHRONOS_validation" };
         create_info.enabledLayerCount = 1;
@@ -159,12 +163,12 @@ VulkanContext::VulkanContext(const char** extensions, uint32_t extensions_count)
     }
 }
 
-void VulkanContext::destroy0() {
+void Context::ShutDown0() {
     VkResult err = vkDeviceWaitIdle(g_Device);
     check_vk_result(err);
 }
 
-void VulkanContext::destroy1() {
+void Context::ShutDown1() {
     vkDestroyDescriptorPool(g_Device, g_DescriptorPool, g_Allocator);
 #ifdef IMGUI_VULKAN_DEBUG_REPORT
     // Remove the debug report callback
@@ -175,6 +179,6 @@ void VulkanContext::destroy1() {
     vkDestroyInstance(g_Instance, g_Allocator);
 }
 
-} // namespace Cool
+} // namespace Cool::Vulkan
 
 #endif

@@ -4,8 +4,8 @@
 #include <imgui/backends/imgui_impl_glfw.h>
 #ifdef __COOL_APP_VULKAN
 #include <imgui/backends/imgui_impl_vulkan.h>
-#include <vulkan/vulkan.h>
-#include "VulkanCheckResult.h"
+#include "../Gpu/internal/vulkan/CheckResult.h"
+#include "../Gpu/internal/vulkan/Context.h"
 #endif
 #ifdef __COOL_APP_OPENGL
 #include <imgui/backends/imgui_impl_opengl3.h>
@@ -21,14 +21,14 @@ bool WindowFactory::s_bInitialized = false;
 #ifdef __COOL_APP_VULKAN
 // All the ImGui_ImplVulkanH_XXX structures/functions are optional helpers used by the demo.
 // Your real engine/app may not use them.
-static void SetupVulkanWindow(const VulkanContext& vulkan_context, VulkanWindowState& vulkan_window_state, VkSurfaceKHR surface, int width, int height)
+static void SetupVulkanWindow(VulkanWindowState& vulkan_window_state, VkSurfaceKHR surface, int width, int height)
 {
     ImGui_ImplVulkanH_Window* wd = &vulkan_window_state.g_MainWindowData;
     wd->Surface = surface;
 
     // Check for WSI support
     VkBool32 res;
-    vkGetPhysicalDeviceSurfaceSupportKHR(vulkan_context.g_PhysicalDevice, vulkan_context.g_QueueFamily, wd->Surface, &res);
+    vkGetPhysicalDeviceSurfaceSupportKHR(Vulkan::Context::g_PhysicalDevice, Vulkan::Context::g_QueueFamily, wd->Surface, &res);
     if (res != VK_TRUE)
     {
         fprintf(stderr, "Error no WSI support on physical device 0\n");
@@ -38,7 +38,7 @@ static void SetupVulkanWindow(const VulkanContext& vulkan_context, VulkanWindowS
     // Select Surface Format
     const VkFormat requestSurfaceImageFormat[] = { VK_FORMAT_B8G8R8A8_UNORM, VK_FORMAT_R8G8B8A8_UNORM, VK_FORMAT_B8G8R8_UNORM, VK_FORMAT_R8G8B8_UNORM };
     const VkColorSpaceKHR requestSurfaceColorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
-    wd->SurfaceFormat = ImGui_ImplVulkanH_SelectSurfaceFormat(vulkan_context.g_PhysicalDevice, wd->Surface, requestSurfaceImageFormat, (size_t)IM_ARRAYSIZE(requestSurfaceImageFormat), requestSurfaceColorSpace);
+    wd->SurfaceFormat = ImGui_ImplVulkanH_SelectSurfaceFormat(Vulkan::Context::g_PhysicalDevice, wd->Surface, requestSurfaceImageFormat, (size_t)IM_ARRAYSIZE(requestSurfaceImageFormat), requestSurfaceColorSpace);
 
     // Select Present Mode
 #ifdef IMGUI_UNLIMITED_FRAME_RATE
@@ -46,12 +46,12 @@ static void SetupVulkanWindow(const VulkanContext& vulkan_context, VulkanWindowS
 #else
     VkPresentModeKHR present_modes[] = { VK_PRESENT_MODE_FIFO_KHR };
 #endif
-    wd->PresentMode = ImGui_ImplVulkanH_SelectPresentMode(vulkan_context.g_PhysicalDevice, wd->Surface, &present_modes[0], IM_ARRAYSIZE(present_modes));
+    wd->PresentMode = ImGui_ImplVulkanH_SelectPresentMode(Vulkan::Context::g_PhysicalDevice, wd->Surface, &present_modes[0], IM_ARRAYSIZE(present_modes));
     //printf("[vulkan] Selected PresentMode = %d\n", wd->PresentMode);
 
     // Create SwapChain, RenderPass, Framebuffer, etc.
     IM_ASSERT(vulkan_window_state.g_MinImageCount >= 2);
-    ImGui_ImplVulkanH_CreateOrResizeWindow(vulkan_context.g_Instance, vulkan_context.g_PhysicalDevice, vulkan_context.g_Device, wd, vulkan_context.g_QueueFamily, vulkan_context.g_Allocator, width, height, vulkan_window_state.g_MinImageCount);
+    ImGui_ImplVulkanH_CreateOrResizeWindow(Vulkan::Context::g_Instance, Vulkan::Context::g_PhysicalDevice, Vulkan::Context::g_Device, wd, Vulkan::Context::g_QueueFamily, Vulkan::Context::g_Allocator, width, height, vulkan_window_state.g_MinImageCount);
 }
 #endif
 
@@ -75,21 +75,19 @@ WindowFactory::WindowFactory(int openGLMajorVersion, int openGLMinorVersion)
 	}
 	uint32_t extensions_count = 0;
 	const char** extensions = glfwGetRequiredInstanceExtensions(&extensions_count);
-	_vulkan_contexts.emplace_back(extensions, extensions_count);
+	Vulkan::Context::Initialize(extensions, extensions_count);
 #endif
 }
 
 WindowFactory::~WindowFactory() {
 #ifdef __COOL_APP_VULKAN
-    for (auto& context : _vulkan_contexts)
-        context.destroy0();
+	Vulkan::Context::ShutDown0();
     ImGui_ImplVulkan_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
 	ImGui::DestroyContext();
 	for (auto& window : _windows)
 		window.destroy();
-	for (auto& context : _vulkan_contexts)
-		context.destroy1();
+	Vulkan::Context::ShutDown1();
 	glfwTerminate();
 #endif
 #ifdef __COOL_APP_OPENGL
@@ -117,13 +115,11 @@ void WindowFactory::GlfwErrorCallback(int error, const char* description) {
 
 #ifdef __COOL_APP_VULKAN
 Window& WindowFactory::create(const char* name, int width, int height) {
-	VulkanContext& vk_context = _vulkan_contexts[0];
 	// Window flags
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	// Create window
 	_windows.emplace_back(
-		glfwCreateWindow(width, height, name, NULL, NULL),
-		vk_context
+		glfwCreateWindow(width, height, name, NULL, NULL)
 	);
 	Window& window = _windows.back();
 	if (!window.get()) {
@@ -136,13 +132,13 @@ Window& WindowFactory::create(const char* name, int width, int height) {
 	// window.enableVSync();
     // Create Window Surface
     VkSurfaceKHR surface;
-    VkResult err = glfwCreateWindowSurface(vk_context.g_Instance, window.get(), vk_context.g_Allocator, &surface);
-    check_vk_result(err);
+    VkResult err = glfwCreateWindowSurface(Vulkan::Context::g_Instance, window.get(), Vulkan::Context::g_Allocator, &surface);
+    Vulkan::check_vk_result(err);
 
     // Create Framebuffers
     int w, h;
     glfwGetFramebufferSize(window.get(), &w, &h);
-    SetupVulkanWindow(window._vulkan_context, window._vulkan_window_state, surface, w, h);
+    SetupVulkanWindow(window._vulkan_window_state, surface, w, h);
 	setupImGui(window);
 	return window;
 }
@@ -224,17 +220,17 @@ void WindowFactory::setupImGui(Window& window) {
 #ifdef __COOL_APP_VULKAN
     ImGui_ImplGlfw_InitForVulkan(window.get(), true);
     ImGui_ImplVulkan_InitInfo init_info = {};
-    init_info.Instance = window._vulkan_context.g_Instance;
-    init_info.PhysicalDevice = window._vulkan_context.g_PhysicalDevice;
-    init_info.Device = window._vulkan_context.g_Device;
-    init_info.QueueFamily = window._vulkan_context.g_QueueFamily;
-    init_info.Queue = window._vulkan_context.g_Queue;
-    init_info.PipelineCache = window._vulkan_context.g_PipelineCache;
-    init_info.DescriptorPool = window._vulkan_context.g_DescriptorPool;
-    init_info.Allocator = window._vulkan_context.g_Allocator;
-    init_info.MinImageCount = window._vulkan_window_state.g_MinImageCount;
-    init_info.ImageCount = window._vulkan_window_state.g_MainWindowData.ImageCount;
-    init_info.CheckVkResultFn = check_vk_result;
+    init_info.Instance =       Vulkan::Context::g_Instance;
+    init_info.PhysicalDevice = Vulkan::Context::g_PhysicalDevice;
+    init_info.Device =         Vulkan::Context::g_Device;
+    init_info.QueueFamily =    Vulkan::Context::g_QueueFamily;
+    init_info.Queue =          Vulkan::Context::g_Queue;
+    init_info.PipelineCache =  Vulkan::Context::g_PipelineCache;
+    init_info.DescriptorPool = Vulkan::Context::g_DescriptorPool;
+    init_info.Allocator =      Vulkan::Context::g_Allocator;
+    init_info.MinImageCount =  window._vulkan_window_state.g_MinImageCount;
+    init_info.ImageCount =     window._vulkan_window_state.g_MainWindowData.ImageCount;
+    init_info.CheckVkResultFn = Vulkan::check_vk_result;
     ImGui_ImplVulkan_Init(&init_info, window._vulkan_window_state.g_MainWindowData.RenderPass);
 
 	// Load Fonts
@@ -258,13 +254,13 @@ void WindowFactory::setupImGui(Window& window) {
 		VkCommandPool command_pool = window._vulkan_window_state.g_MainWindowData.Frames[window._vulkan_window_state.g_MainWindowData.FrameIndex].CommandPool;
 		VkCommandBuffer command_buffer = window._vulkan_window_state.g_MainWindowData.Frames[window._vulkan_window_state.g_MainWindowData.FrameIndex].CommandBuffer;
 
-		VkResult err = vkResetCommandPool(window._vulkan_context.g_Device, command_pool, 0);
-		check_vk_result(err);
+		VkResult err = vkResetCommandPool(Vulkan::Context::g_Device, command_pool, 0);
+		Vulkan::check_vk_result(err);
 		VkCommandBufferBeginInfo begin_info = {};
 		begin_info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 		begin_info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 		err = vkBeginCommandBuffer(command_buffer, &begin_info);
-		check_vk_result(err);
+		Vulkan::check_vk_result(err);
 
 		ImGui_ImplVulkan_CreateFontsTexture(command_buffer);
 
@@ -273,12 +269,12 @@ void WindowFactory::setupImGui(Window& window) {
 		end_info.commandBufferCount = 1;
 		end_info.pCommandBuffers = &command_buffer;
 		err = vkEndCommandBuffer(command_buffer);
-		check_vk_result(err);
-		err = vkQueueSubmit(window._vulkan_context.g_Queue, 1, &end_info, VK_NULL_HANDLE);
-		check_vk_result(err);
+		Vulkan::check_vk_result(err);
+		err = vkQueueSubmit(Vulkan::Context::g_Queue, 1, &end_info, VK_NULL_HANDLE);
+		Vulkan::check_vk_result(err);
 
-		err = vkDeviceWaitIdle(window._vulkan_context.g_Device);
-		check_vk_result(err);
+		err = vkDeviceWaitIdle(Vulkan::Context::g_Device);
+		Vulkan::check_vk_result(err);
 		ImGui_ImplVulkan_DestroyFontUploadObjects();
 	}
 #endif

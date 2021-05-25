@@ -2,10 +2,6 @@
 
 #include "Window.h"
 
-#ifdef __COOL_APP_VULKAN
-#include "internal/VulkanContext.h"
-#endif
-
 namespace Cool {
 
 /// A wrapper for Glfw + Vulkan/OpenGL + ImGui initialization and shutdown and windows creation.
@@ -46,9 +42,6 @@ private:
 	static bool s_bInitialized;
 #endif
 	std::list<Window> _windows;
-#ifdef __COOL_APP_VULKAN
-	std::vector<VulkanContext> _vulkan_contexts;
-#endif
 };
 
 } // namespace Cool
