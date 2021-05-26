@@ -23,6 +23,7 @@ public:
 	static VkDebugReportCallbackEXT g_DebugReport;
 	static VkPipelineCache          g_PipelineCache;
 	static VkDescriptorPool         g_DescriptorPool;
+	static VkCommandPool            _command_pool;
 
 	static VkSurfaceFormatKHR  g_SurfaceFormat;
 	static VkPresentModeKHR    g_PresentMode;

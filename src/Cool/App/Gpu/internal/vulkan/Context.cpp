@@ -13,6 +13,7 @@ VkQueue                  Context::g_Queue = VK_NULL_HANDLE;
 VkDebugReportCallbackEXT Context::g_DebugReport = VK_NULL_HANDLE;
 VkPipelineCache          Context::g_PipelineCache = VK_NULL_HANDLE;
 VkDescriptorPool         Context::g_DescriptorPool = VK_NULL_HANDLE;
+VkCommandPool            Context::_command_pool;
 VkSurfaceFormatKHR       Context::g_SurfaceFormat;
 VkPresentModeKHR         Context::g_PresentMode;
 
@@ -162,6 +163,17 @@ void Context::Initialize(const char** extensions, uint32_t extensions_count) {
         pool_info.pPoolSizes = pool_sizes;
         err = vkCreateDescriptorPool(g_Device, &pool_info, g_Allocator, &g_DescriptorPool);
         check_vk_result(err);
+    }
+
+    // Create command pool
+    {
+        VkCommandPoolCreateInfo poolInfo{};
+        poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        poolInfo.queueFamilyIndex = g_QueueFamily;
+
+        if (vkCreateCommandPool(g_Device, &poolInfo, nullptr, &_command_pool) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create graphics command pool!");
+        }
     }
 }
 
