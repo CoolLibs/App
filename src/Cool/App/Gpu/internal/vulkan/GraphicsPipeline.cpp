@@ -228,9 +228,9 @@ void GraphicsPipeline::create_render_pass() {
 }
 
 GraphicsPipeline::~GraphicsPipeline() {
-	vkDestroyPipeline(Vulkan::Context::g_Device, pipeline, nullptr);
-	vkDestroyPipelineLayout(Vulkan::Context::g_Device, pipeline_layout, nullptr);
-	vkDestroyRenderPass(Vulkan::Context::g_Device, render_pass, nullptr);
+	vkDestroyPipeline(Vulkan::Context::g_Device, pipeline, Vulkan::Context::g_Allocator);
+	vkDestroyPipelineLayout(Vulkan::Context::g_Device, pipeline_layout, Vulkan::Context::g_Allocator);
+	vkDestroyRenderPass(Vulkan::Context::g_Device, render_pass, Vulkan::Context::g_Allocator);
 }
 
 } // namespace Cool
